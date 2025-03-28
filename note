@@ -1,0 +1,11 @@
+Settings - General - Sharing
+
+Packet capture at AP1
+
+save as .cap, read by scapy
+
+connect phone with adb, log sys calls
+
+
+
+[Scapy data structure](https://stackoverflow.com/questions/30456789/understanding-scapy-data-structure)
