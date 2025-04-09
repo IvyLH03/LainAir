@@ -218,6 +218,14 @@ class Flow:
     
     self.per_flow_features = per_flow_features
     return per_flow_features
+  
+  def get_features(self):
+    """
+    Return the features of the flow.
+    """
+    return {
+      self.flow_specifier: self.get_per_flow_features()
+    }
 
 
 
