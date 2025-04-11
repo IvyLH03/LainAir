@@ -7,7 +7,7 @@ class FlowSpecifier:
   """
   Classify a flow based on source IP, destination IP, source port, destination port, and protocol (TCP/UDP).
   """
-  def __init__(self, ip_1, ip_2, port_1, port_2, protocol):
+  def __init__(self, ip_1, ip_2, port_1, port_2, protocol, label=None):
     # ipv4 private address
     if ip_2.startswith("192.168") or ip_2.startswith("10.") or ip_2.startswith("172.16"):
       ip_1, ip_2 = ip_2, ip_1
@@ -24,6 +24,7 @@ class FlowSpecifier:
     self.port_1 = port_1
     self.port_2 = port_2
     self.protocol = protocol
+    self.label = label
 
   def __hash__(self):
     return hash((self.ip_1, self.ip_2, self.port_1, self.port_2, self.protocol))
@@ -173,24 +174,42 @@ class Flow:
       
   def get_per_flow_features(self):
     # calculate per-flow features
+
+    pkt_len_sum = sum(len(p['IP']) for p in self.packets)  # packet length sum
+    pkt_len_mean = pkt_len_sum / len(self.packets)  # packet length mean
+    pkt_len_std = (sum((len(p['IP']) - pkt_len_mean) ** 2 for p in self.packets) / len(self.packets)) ** 0.5  # packet length std
+    
+
+    iat_sum = sum(p.iat for p in self.packets)  # inter-arrival time sum
+    iat_mean = iat_sum / len(self.packets)  # inter-arrival time mean
+    iat_std = (sum((p.iat - iat_mean) ** 2 for p in self.packets) / len(self.packets)) ** 0.5  # inter-arrival time std
+
     per_flow_features = {
+      'flow': {
+        'ip_1': self.ip_1,
+        'ip_2': self.ip_2,
+        'port_1': self.port_1,
+        'port_2': self.port_2,
+        'protocol': self.protocol,
+        'label': self.flow_specifier.label,
+      },
       'packet_length': {
         # min Minimum
         'min': min(len(p['IP']) for p in self.packets), 
         # max Maximum
         'max': max(len(p['IP']) for p in self.packets),
         # mean Arithmetic mean
-        'mean': sum(len(p['IP']) for p in self.packets) / len(self.packets),
+        'mean': pkt_len_mean,
         # std Standard deviation
-        'std': (sum((len(p['IP']) - sum(len(p['IP']) for p in self.packets) / len(self.packets)) ** 2 for p in self.packets) / len(self.packets)) ** 0.5,
-        # var Variance
-        'var': sum((len(p['IP']) - sum(len(p['IP']) for p in self.packets) / len(self.packets)) ** 2 for p in self.packets) / len(self.packets),
-        # mad Mean absolute deviation
-        'mad': sum(abs(len(p['IP']) - sum(len(p['IP']) for p in self.packets) / len(self.packets)) for p in self.packets) / len(self.packets),
-        # skew Unbiased sample skewness
-        'skew': (sum((len(p['IP']) - sum(len(p['IP']) for p in self.packets) / len(self.packets)) ** 3 for p in self.packets) / len(self.packets)) / ((sum((len(p['IP']) - sum(len(p['IP']) for p in self.packets) / len(self.packets)) ** 2 for p in self.packets) / len(self.packets)) ** 1.5),
-        # kurtosis Unbiased Fisher kurtosis
-        'kurtosis': (sum((len(p['IP']) - sum(len(p['IP']) for p in self.packets) / len(self.packets)) ** 4 for p in self.packets) / len(self.packets)) / ((sum((len(p['IP']) - sum(len(p['IP']) for p in self.packets) / len(self.packets)) ** 2 for p in self.packets) / len(self.packets)) ** 2),
+        'std': pkt_len_std,
+        # # var Variance
+        # 'var': sum((len(p['IP']) - sum(len(p['IP']) for p in self.packets) / len(self.packets)) ** 2 for p in self.packets) / len(self.packets),
+        # # mad Mean absolute deviation
+        # 'mad': sum(abs(len(p['IP']) - sum(len(p['IP']) for p in self.packets) / len(self.packets)) for p in self.packets) / len(self.packets),
+        # # skew Unbiased sample skewness
+        # 'skew': (sum((len(p['IP']) - sum(len(p['IP']) for p in self.packets) / len(self.packets)) ** 3 for p in self.packets) / len(self.packets)) / ((sum((len(p['IP']) - sum(len(p['IP']) for p in self.packets) / len(self.packets)) ** 2 for p in self.packets) / len(self.packets)) ** 1.5),
+        # # kurtosis Unbiased Fisher kurtosis
+        # 'kurtosis': (sum((len(p['IP']) - sum(len(p['IP']) for p in self.packets) / len(self.packets)) ** 4 for p in self.packets) / len(self.packets)) / ((sum((len(p['IP']) - sum(len(p['IP']) for p in self.packets) / len(self.packets)) ** 2 for p in self.packets) / len(self.packets)) ** 2),
         # q_percentile qth percentile (q ∈ [10 : 10 : 90])
         'q_percentile': {i: sorted(len(p['IP']) for p in self.packets)[int(len(self.packets) * i / 100)] for i in range(10, 100, 10)},
       },
@@ -200,17 +219,17 @@ class Flow:
         # max Maximum
         'max': float(max(p.iat for p in self.packets)),
         # mean Arithmetic mean
-        'mean': float(sum(p.iat for p in self.packets) / len(self.packets)),
+        'mean': float(iat_mean),
         # std Standard deviation
-        'std': float((sum((p.iat - sum(p.iat for p in self.packets) / len(self.packets)) ** 2 for p in self.packets) / len(self.packets)) ** 0.5),
-        # var Variance
-        'var': float(sum((p.iat - sum(p.iat for p in self.packets) / len(self.packets)) ** 2 for p in self.packets) / len(self.packets)),
-        # mad Mean absolute deviation
-        'mad': float(sum(abs(p.iat - sum(p.iat for p in self.packets) / len(self.packets)) for p in self.packets) / len(self.packets)),
-        # skew Unbiased sample skewness
-        'skew': float((sum((p.iat - sum(p.iat for p in self.packets) / len(self.packets)) ** 3 for p in self.packets) / len(self.packets)) / ((sum((p.iat - sum(p.iat for p in self.packets) / len(self.packets)) ** 2 for p in self.packets) / len(self.packets)) ** 1.5)),
-        # kurtosis Unbiased Fisher kurtosis
-        'kurtosis': float((sum((p.iat - sum(p.iat for p in self.packets) / len(self.packets)) ** 4 for p in self.packets) / len(self.packets)) / ((sum((p.iat - sum(p.iat for p in self.packets) / len(self.packets)) ** 2 for p in self.packets) / len(self.packets)) ** 2)),
+        'std': float(iat_std),
+        # # var Variance
+        # 'var': float(sum((p.iat - sum(p.iat for p in self.packets) / len(self.packets)) ** 2 for p in self.packets) / len(self.packets)),
+        # # mad Mean absolute deviation
+        # 'mad': float(sum(abs(p.iat - sum(p.iat for p in self.packets) / len(self.packets)) for p in self.packets) / len(self.packets)),
+        # # skew Unbiased sample skewness
+        # 'skew': float((sum((p.iat - sum(p.iat for p in self.packets) / len(self.packets)) ** 3 for p in self.packets) / len(self.packets)) / ((sum((p.iat - sum(p.iat for p in self.packets) / len(self.packets)) ** 2 for p in self.packets) / len(self.packets)) ** 1.5)),
+        # # kurtosis Unbiased Fisher kurtosis
+        # 'kurtosis': float((sum((p.iat - sum(p.iat for p in self.packets) / len(self.packets)) ** 4 for p in self.packets) / len(self.packets)) / ((sum((p.iat - sum(p.iat for p in self.packets) / len(self.packets)) ** 2 for p in self.packets) / len(self.packets)) ** 2)),
         # q_percentile qth percentile (q ∈ [10 : 10 : 90])
         'q_percentile': {i: sorted(float(p.iat) for p in self.packets)[int(len(self.packets) * i / 100)] for i in range(10, 100, 10)},
       }
@@ -226,12 +245,38 @@ class Flow:
     return {
       self.flow_specifier: self.get_per_flow_features()
     }
+  
+  def separate_flow_by_time_interval(self, time_interval):
+    """
+    Separate the flow into multiple flows. Each flow contains packets that are sent within time_interval seconds after the first packet. 
+    """
+    separated_flows = []
+    
+    flow = Flow(self.flow_specifier)
+
+    for pkt in self.packets:
+      # if the flow is empty, add the packet to the folw
+      if not flow.packets:
+        flow.append(pkt)
+
+      # check if the packet is within the time interval
+
+      else:
+        if pkt.time - flow.packets[0].time <= time_interval:
+          flow.append(pkt)
+        else:
+          # add the flow to the list of separated flows
+          separated_flows.append(flow)
+          # create a new flow
+          flow = Flow(self.flow_specifier)
+          flow.append(pkt)
+
+    separated_flows.append(flow)
+    return separated_flows
 
 
 
-
-
-def classify_flows(packets):
+def classify_flows(packets, label=None):
   """
   classify flows based on the packets
   return a list of flows sorted by the number of packets in descending order
@@ -245,7 +290,8 @@ def classify_flows(packets):
           ip_2=pkt['IP'].dst,
           port_1=pkt['TCP'].sport,
           port_2=pkt['TCP'].dport,
-          protocol='TCP'
+          protocol='TCP',
+          label=label
         )
         # print(pkt['TCP'].sport, pkt['TCP'].dport, pkt['IP'].src, pkt['IP'].dst)
       elif 'IPv6' in pkt:
@@ -254,7 +300,8 @@ def classify_flows(packets):
           ip_2=pkt['IPv6'].dst,
           port_1=pkt['TCP'].sport,
           port_2=pkt['TCP'].dport,
-          protocol='TCP'
+          protocol='TCP',
+          label=label
         )
         # print(pkt['TCP'].sport, pkt['TCP'].dport, pkt['IPv6'].src, pkt['IPv6'].dst)
       else:
@@ -266,7 +313,8 @@ def classify_flows(packets):
           ip_2=pkt['IP'].dst,
           port_1=pkt['UDP'].sport,
           port_2=pkt['UDP'].dport,
-          protocol='UDP'
+          protocol='UDP',
+          label=label
         )
         # print(pkt['UDP'].sport, pkt['UDP'].dport, pkt['IP'].src, pkt['IP'].dst)
       elif 'IPv6' in pkt:
@@ -275,7 +323,8 @@ def classify_flows(packets):
           ip_2=pkt['IPv6'].dst,
           port_1=pkt['UDP'].sport,
           port_2=pkt['UDP'].dport,
-          protocol='UDP'
+          protocol='UDP',
+          label=label
         )
         # print(pkt['UDP'].sport, pkt['UDP'].dport, pkt['IPv6'].src, pkt['IPv6'].dst)
       else:
@@ -297,10 +346,24 @@ def classify_flows(packets):
 
 
 if __name__ == "__main__":
-  pkts = rdpcap("captures/01/cap1.pcapng")  # read pcap file
-  print(pkts)
+  filename = "captures/twitch/02.pcapng"
+  label = "twitch"
+  output_file = "data/twitch_02.json"
 
-  sorted_flows = classify_flows(pkts)
+  pkts = rdpcap(filename)  # read pcap file
+
+  sorted_flows = classify_flows(pkts, label)
+
+  largest_flow = sorted_flows[0]
+  largest_flow_separated = largest_flow.separate_flow_by_time_interval(60)
+  print(f"Largest flow: {largest_flow.flow_specifier} with {len(largest_flow.packets)} packets, {len(largest_flow_separated)} flows after separation")
+  data = []
+  for flow in largest_flow_separated:
+    data.append(flow.get_per_flow_features())
+
+  with open(output_file, "w") as f:
+    import json
+    json.dump(data, f, indent=4)
   
   # print the top 5 flows by the number of packets
   # for flow in sorted_flows[:5]:
@@ -308,8 +371,8 @@ if __name__ == "__main__":
   
 
   # plot the inter-arrival times of packets in the flow with the most packets
-  sorted_flows[0].print_packets(n=400)
+  # sorted_flows[0].print_packets(n=400)
   # sorted_flows[0].plot(plot_first_n_packets = 400) 
-  print(sorted_flows[0].get_per_flow_features())
+  # print(sorted_flows[0].get_per_flow_features())
 
     
