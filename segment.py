@@ -94,7 +94,7 @@ class Flow:
     else:
       return []
   
-  def plot(self, plot_first_n_packets=None):
+  def plot(self, plot_first_n_packets=None, plot_length=True, plot_arrival_time=True):
     """
     Plot the time series of the packet length of incoming packets in the flow.
     """
@@ -127,14 +127,16 @@ class Flow:
     plt.ylabel("Packet Length (bytes)")
     plt.title(f"Packet Length of Flow {self.flow_specifier}")
 
-    # mark the arrival time of the packets with red dots
-    for i in range(len(incoming_packets_time)):
-      plt.scatter(incoming_packets_time[i], incoming_packets_lengths[i], color='red', s=10)
+    if plot_arrival_time:
+      # mark the arrival time of the packets with red dots
+      for i in range(len(incoming_packets_time)):
+        plt.scatter(incoming_packets_time[i], incoming_packets_lengths[i], color='red', s=10)
 
-    # plot the time series of packet length of outgoing packets
-    plt.plot(outgoing_packet_time, outgoing_packets_lengths, color='green')
-    for i in range(len(outgoing_packet_time)):
-      plt.scatter(outgoing_packet_time[i], outgoing_packets_lengths[i], color='yellow', s=10)
+    if plot_length:
+      # plot the time series of packet length of outgoing packets
+      plt.plot(outgoing_packet_time, outgoing_packets_lengths, color='green')
+      for i in range(len(outgoing_packet_time)):
+        plt.scatter(outgoing_packet_time[i], outgoing_packets_lengths[i], color='yellow', s=10)
 
 
     plt.show()
@@ -237,6 +239,23 @@ class Flow:
     
     self.per_flow_features = per_flow_features
     return per_flow_features
+  
+  def get_all_inter_arrival_times(self):
+    """
+    Return a list of inter-arrival times of packets in the flow.
+    """
+    return [float(str(pkt.iat)) for pkt in self.packets]
+  
+  def plot_iat_distribution(self):
+    """
+    Plot the distribution of inter-arrival times of packets in the flow.
+    """
+    iat = self.get_all_inter_arrival_times()
+    plt.hist(iat, bins=100)
+    plt.xlabel("Inter-arrival time (s)")
+    plt.ylabel("Frequency")
+    plt.title(f"Inter-arrival time distribution of Flow {self.flow_specifier}")
+    plt.show()
   
   def get_features(self):
     """
@@ -346,24 +365,42 @@ def classify_flows(packets, label=None):
 
 
 if __name__ == "__main__":
-  filename = "captures/twitch/02.pcapng"
-  label = "twitch"
-  output_file = "data/twitch_02.json"
+  filename = "captures/youtube/01.pcapng"
+  label = "youtube"
+  # output_file = "data/twitch_02.json"
 
   pkts = rdpcap(filename)  # read pcap file
 
   sorted_flows = classify_flows(pkts, label)
 
   largest_flow = sorted_flows[0]
-  largest_flow_separated = largest_flow.separate_flow_by_time_interval(60)
-  print(f"Largest flow: {largest_flow.flow_specifier} with {len(largest_flow.packets)} packets, {len(largest_flow_separated)} flows after separation")
-  data = []
-  for flow in largest_flow_separated:
-    data.append(flow.get_per_flow_features())
+  iat = largest_flow.get_all_inter_arrival_times()
+  print(iat)
+  # print the largest 50 inter-arrival times
+  print("Largest 50 inter-arrival times:")
+  print(sorted(iat, reverse=True)[:50])
+  print(min(iat))
+  # largest_flow.plot_iat_distribution()
 
-  with open(output_file, "w") as f:
-    import json
-    json.dump(data, f, indent=4)
+  largest_flow.plot(plot_first_n_packets=1000, plot_length=False, plot_arrival_time=True)
+
+
+  # print iat percentile
+  print("Inter-arrival time percentiles:")
+  for i in range(10, 100, 10):
+    print(f"{i}th percentile: {sorted(iat)[int(len(iat) * i / 100)]}")
+
+
+  # largest_flow_separated = largest_flow.separate_flow_by_time_interval(60)
+  # print(f"Largest flow: {largest_flow.flow_specifier} with {len(largest_flow.packets)} packets, {len(largest_flow_separated)} flows after separation")
+  # data = []
+  # for flow in largest_flow_separated:
+  #   data.append(flow.get_per_flow_features())
+
+  # with open(output_file, "w") as f:
+  #   import json
+  #   json.dump(data, f, indent=4)
+
   
   # print the top 5 flows by the number of packets
   # for flow in sorted_flows[:5]:
