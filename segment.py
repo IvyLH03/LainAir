@@ -198,10 +198,27 @@ class Flow:
     pkt_len_mean = pkt_len_sum / len(self.packets)  # packet length mean
     pkt_len_std = (sum((len(p['IP']) - pkt_len_mean) ** 2 for p in self.packets) / len(self.packets)) ** 0.5  # packet length std
     
+    outgoing_packets = self.get_outgoing_packets()
+    outgoing_pkt_len_sum = sum(len(p['IP']) for p in outgoing_packets)  # outgoing packet length sum
+    outgoing_pkt_len_mean = outgoing_pkt_len_sum / len(outgoing_packets)  # outgoing packet length mean
+    outgoing_pkt_len_std = (sum((len(p['IP']) - outgoing_pkt_len_mean) ** 2 for p in outgoing_packets) / len(outgoing_packets)) ** 0.5  # outgoing packet length std
+
+    incoming_packets = self.get_incoming_packets()
+    incoming_pkt_len_sum = sum(len(p['IP']) for p in incoming_packets)  # incoming packet length sum
+    incoming_pkt_len_mean = incoming_pkt_len_sum / len(incoming_packets)  # incoming packet length mean
+    incoming_pkt_len_std = (sum((len(p['IP']) - incoming_pkt_len_mean) ** 2 for p in incoming_packets) / len(incoming_packets)) ** 0.5  # incoming packet length std
 
     iat_sum = sum(p.iat for p in self.packets)  # inter-arrival time sum
     iat_mean = iat_sum / len(self.packets)  # inter-arrival time mean
     iat_std = (sum((p.iat - iat_mean) ** 2 for p in self.packets) / len(self.packets)) ** 0.5  # inter-arrival time std
+
+    incoming_pkt_iat_sum = sum(p.iat for p in incoming_packets)  # inter-arrival time sum
+    incoming_pkt_iat_mean = incoming_pkt_iat_sum / len(incoming_packets)  # inter-arrival time mean
+    incoming_pkt_iat_std = (sum((p.iat - incoming_pkt_iat_mean) ** 2 for p in incoming_packets) / len(incoming_packets)) ** 0.5  # inter-arrival time std
+
+    outgoing_pkt_iat_sum = sum(p.iat for p in outgoing_packets)  # inter-arrival time sum
+    outgoing_pkt_iat_mean = outgoing_pkt_iat_sum / len(outgoing_packets)  # inter-arrival time mean
+    outgoing_pkt_iat_std = (sum((p.iat - outgoing_pkt_iat_mean) ** 2 for p in outgoing_packets) / len(outgoing_packets)) ** 0.5  # inter-arrival time std
 
     per_flow_features = {
       'flow': {
@@ -232,6 +249,30 @@ class Flow:
         # q_percentile qth percentile (q ∈ [10 : 10 : 90])
         'q_percentile': {i: sorted(len(p['IP']) for p in self.packets)[int(len(self.packets) * i / 100)] for i in range(10, 100, 10)},
       },
+      'incoming_packet_length':{
+        # min Minimum
+        'min': min(len(p['IP']) for p in incoming_packets),
+        # max Maximum
+        'max': max(len(p['IP']) for p in incoming_packets),
+        # mean Arithmetic mean
+        'mean': incoming_pkt_len_mean,
+        # std Standard deviation
+        'std': incoming_pkt_len_std,
+        # q_percentile qth percentile (q ∈ [10 : 10 : 90])
+        'q_percentile': {i: sorted(len(p['IP']) for p in incoming_packets)[int(len(incoming_packets) * i / 100)] for i in range(10, 100, 10)},
+      },
+      'outgoing_packet_length':{
+        # min Minimum
+        'min': min(len(p['IP']) for p in outgoing_packets),
+        # max Maximum
+        'max': max(len(p['IP']) for p in outgoing_packets),
+        # mean Arithmetic mean
+        'mean': outgoing_pkt_len_mean,
+        # std Standard deviation
+        'std': outgoing_pkt_len_std,
+        # q_percentile qth percentile (q ∈ [10 : 10 : 90])
+        'q_percentile': {i: sorted(len(p['IP']) for p in outgoing_packets)[int(len(outgoing_packets) * i / 100)] for i in range(10, 100, 10)},
+      },
       'inter_arrival_time':{
         # min Minimum
         'min': float(min(p.iat for p in self.packets)),
@@ -251,7 +292,32 @@ class Flow:
         # 'kurtosis': float((sum((p.iat - sum(p.iat for p in self.packets) / len(self.packets)) ** 4 for p in self.packets) / len(self.packets)) / ((sum((p.iat - sum(p.iat for p in self.packets) / len(self.packets)) ** 2 for p in self.packets) / len(self.packets)) ** 2)),
         # q_percentile qth percentile (q ∈ [10 : 10 : 90])
         'q_percentile': {i: sorted(float(p.iat) for p in self.packets)[int(len(self.packets) * i / 100)] for i in range(10, 100, 10)},
+      },
+      'incoming_inter_arrival_time':{
+        # min Minimum
+        'min': float(min(p.iat for p in incoming_packets)),
+        # max Maximum
+        'max': float(max(p.iat for p in incoming_packets)),
+        # mean Arithmetic mean
+        'mean': float(incoming_pkt_iat_mean),
+        # std Standard deviation
+        'std': float(incoming_pkt_iat_std),
+        # q_percentile qth percentile (q ∈ [10 : 10 : 90])
+        'q_percentile': {i: sorted(float(p.iat) for p in incoming_packets)[int(len(incoming_packets) * i / 100)] for i in range(10, 100, 10)},
+      },
+      'outgoing_inter_arrival_time':{
+        # min Minimum
+        'min': float(min(p.iat for p in outgoing_packets)),
+        # max Maximum
+        'max': float(max(p.iat for p in outgoing_packets)),
+        # mean Arithmetic mean
+        'mean': float(outgoing_pkt_iat_mean),
+        # std Standard deviation
+        'std': float(outgoing_pkt_iat_std),
+        # q_percentile qth percentile (q ∈ [10 : 10 : 90])
+        'q_percentile': {i: sorted(float(p.iat) for p in outgoing_packets)[int(len(outgoing_packets) * i / 100)] for i in range(10, 100, 10)},
       }
+
     }
     
     self.per_flow_features = per_flow_features
@@ -397,7 +463,7 @@ if __name__ == "__main__":
 
   # filename = "captures/youtube/01.pcapng"
   # label = "youtube"
-  # output_file = "data/twitch_02.json"
+  output_file = "data/zoom_01.json"
 
   pkts = rdpcap(filename)  # read pcap file
 
@@ -421,15 +487,15 @@ if __name__ == "__main__":
     print(f"{i}th percentile: {sorted(iat)[int(len(iat) * i / 100)]}")
 
 
-  # largest_flow_separated = largest_flow.separate_flow_by_time_interval(60)
-  # print(f"Largest flow: {largest_flow.flow_specifier} with {len(largest_flow.packets)} packets, {len(largest_flow_separated)} flows after separation")
-  # data = []
-  # for flow in largest_flow_separated:
-  #   data.append(flow.get_per_flow_features())
+  largest_flow_separated = largest_flow.separate_flow_by_time_interval(60)
+  print(f"Largest flow: {largest_flow.flow_specifier} with {len(largest_flow.packets)} packets, {len(largest_flow_separated)} flows after separation")
+  data = []
+  for flow in largest_flow_separated:
+    data.append(flow.get_per_flow_features())
 
-  # with open(output_file, "w") as f:
-  #   import json
-  #   json.dump(data, f, indent=4)
+  with open(output_file, "w") as f:
+    import json
+    json.dump(data, f, indent=4)
 
   
   # print the top 5 flows by the number of packets
