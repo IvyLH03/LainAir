@@ -2,6 +2,8 @@ from scapy.all import rdpcap
 import matplotlib.pyplot as plt
 import datetime
 import time
+import argparse
+
 
 class FlowSpecifier:
   """
@@ -73,12 +75,7 @@ class Flow:
     """
     if not pkts:
       pkts = self.packets
-    if 'TCP' in pkts[0]:
-      return [pkt['TCP'] for pkt in pkts if pkt['IP'].dst == self.ip_1]
-    elif 'UDP' in self.packets[0]:
-      return [pkt['UDP'] for pkt in pkts if pkt['IP'].dst == self.ip_1]
-    else:
-      return []
+    return [pkt for pkt in pkts if pkt['IP'].dst == self.ip_1]
 
   
   def get_outgoing_packets(self, pkts=None):
@@ -87,14 +84,9 @@ class Flow:
     """
     if not pkts:
       pkts = self.packets
-    if 'TCP' in pkts[0]:
-      return [pkt['TCP'] for pkt in pkts if pkt['IP'].src == self.ip_1]
-    elif 'UDP' in self.packets[0]:
-      return [pkt['UDP'] for pkt in pkts if pkt['IP'].src == self.ip_1]
-    else:
-      return []
+    return [pkt for pkt in pkts if pkt['IP'].src == self.ip_1]
   
-  def plot(self, plot_first_n_packets=None, plot_length=True, plot_arrival_time=True):
+  def plot(self, plot_first_n_packets=None, plot_first_n_seconds=None, plot_length=True, plot_arrival_time=True):
     """
     Plot the time series of the packet length of incoming packets in the flow.
     """
@@ -102,41 +94,66 @@ class Flow:
       pkts = self.packets
     else:
       pkts = self.packets[:plot_first_n_packets]
+    
+    if plot_first_n_seconds:
+      pkts = [pkt for pkt in pkts if pkt.time - pkts[0].time <= plot_first_n_seconds]
+
+    print(pkts[0].time, pkts[-1].time, pkts[-1].time - pkts[0].time)
+    print(pkts[0])
+    print(self.ip_1, self.ip_2)
+
+
     # choose incoming packets
     incoming_packets = self.get_incoming_packets(pkts=pkts)
-    
     incoming_packets_lengths = [len(pkt) for pkt in incoming_packets]
     incoming_packets_time = [pkt.time for pkt in incoming_packets]
 
-    # get all the outgoing packets that are sent prior to the last incoming packet
-    last_incoming_packet_time = incoming_packets[-1].time
     outgoing_packets = self.get_outgoing_packets(pkts=pkts)
-    outgoing_packets = [pkt for pkt in outgoing_packets if pkt.time < last_incoming_packet_time]
     outgoing_packets_lengths = [len(pkt) for pkt in outgoing_packets]
     outgoing_packets_time = [pkt.time for pkt in outgoing_packets]
 
     # calculate the arrival time offset
     first_packet_time = min(incoming_packets_time[0], outgoing_packets_time[0])
-    incoming_packets_time = [t - first_packet_time for t in incoming_packets_time]
-    outgoing_packet_time = [t - first_packet_time for t in outgoing_packets_time]
+    print(first_packet_time)
 
+
+    print("first incoming: ", incoming_packets_time[0]) 
+    print("first outgoing: ", outgoing_packets_time[0])
+
+
+    print("last incoming: ", incoming_packets_time[-1], incoming_packets_time[-1] - first_packet_time)
+    print("last outgoing: ", outgoing_packets_time[-1], outgoing_packets_time[-1] - first_packet_time)
+
+    incoming_packets_time = [t - first_packet_time for t in incoming_packets_time]
+    outgoing_packets_time = [t - first_packet_time for t in outgoing_packets_time]
+
+    print(incoming_packets_time[-1], outgoing_packets_time[-1])
 
     # plot the time series of packet length
-    plt.plot(incoming_packets_time, incoming_packets_lengths)
     plt.xlabel("Time (s)")
     plt.ylabel("Packet Length (bytes)")
     plt.title(f"Packet Length of Flow {self.flow_specifier}")
 
+    # if plot_length:
+    #   plt.plot(incoming_packets_time, incoming_packets_lengths)
+    #   plt.plot(outgoing_packets_time, outgoing_packets_lengths, color='green')
+
+
+
     if plot_arrival_time:
       # mark the arrival time of the packets with red dots
       for i in range(len(incoming_packets_time)):
-        plt.scatter(incoming_packets_time[i], incoming_packets_lengths[i], color='red', s=10)
-
-    if plot_length:
+        if plot_length:
+          plt.scatter(incoming_packets_time[i], incoming_packets_lengths[i], color='red', s=10)
+        else:
+          plt.scatter(incoming_packets_time[i], 0, color='red', s=10)
       # plot the time series of packet length of outgoing packets
-      plt.plot(outgoing_packet_time, outgoing_packets_lengths, color='green')
-      for i in range(len(outgoing_packet_time)):
-        plt.scatter(outgoing_packet_time[i], outgoing_packets_lengths[i], color='yellow', s=10)
+      for i in range(len(outgoing_packets_time)):
+        if plot_length:
+          plt.scatter(outgoing_packets_time[i], outgoing_packets_lengths[i], color='green', s=10)
+        else:
+          # mark the arrival time of the packets with yellow dots
+          plt.scatter(outgoing_packets_time[i], 1, color='green', s=10)
 
 
     plt.show()
@@ -362,11 +379,24 @@ def classify_flows(packets, label=None):
   sorted_flows = sorted(flows.values(), key=lambda x: len(x.packets), reverse=True)
   return sorted_flows
 
+def parse_args():
+  """
+  Parse command line arguments.
+  """
+  parser = argparse.ArgumentParser()
+  parser.add_argument("-f", "--filename", type=str, required=True, help="Path to the pcap file")
+  parser.add_argument("-l", "--label", type=str, required=True, help="Label for the flow") 
+  return parser.parse_args()
 
 
 if __name__ == "__main__":
-  filename = "captures/youtube/01.pcapng"
-  label = "youtube"
+  args = parse_args()
+
+  filename = args.filename
+  label = args.label
+
+  # filename = "captures/youtube/01.pcapng"
+  # label = "youtube"
   # output_file = "data/twitch_02.json"
 
   pkts = rdpcap(filename)  # read pcap file
@@ -382,7 +412,7 @@ if __name__ == "__main__":
   print(min(iat))
   # largest_flow.plot_iat_distribution()
 
-  largest_flow.plot(plot_first_n_packets=1000, plot_length=False, plot_arrival_time=True)
+  largest_flow.plot(plot_first_n_seconds=10, plot_length=True, plot_arrival_time=True)
 
 
   # print iat percentile
