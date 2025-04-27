@@ -17,18 +17,24 @@ def lstm_data():
     with open(file, 'r') as f:
       f_data = json.load(f)
       for d in f_data:
+        if len(d) != 300:
+          continue
         youtube_data.append(d)
 
   for file in zoom_data_files:
     with open(file, 'r') as f:
       f_data = json.load(f)
       for d in f_data:
+        if len(d) != 300:
+          continue
         zoom_data.append(d)
 
   for file in twitch_data_files:
     with open(file, 'r') as f:
       f_data = json.load(f)
       for d in f_data:
+        if len(d) != 300:
+          continue
         twitch_data.append(d)
 
   # randomly shuffle the data and put in the dataset
@@ -63,8 +69,8 @@ def lstm_data():
       twitch_data_ptr += 1
 
   output_file = 'data/300pkts/lstm_data.json'
-  with open(output_file, 'w') as f:
-    json.dump(data, f, indent=4)
+  with open(output_file, 'w', encoding="utf-8") as f:
+    json.dump(data, f)
   
   
 

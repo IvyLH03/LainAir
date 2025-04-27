@@ -409,11 +409,12 @@ class Flow:
     """
     time_series_data = []
     for pkt in self.packets:
-      time_series_data.append({
-        'direction': 1 if pkt['IP'].dst == self.ip_1 else 0, # 1 for incoming, 0 for outgoing
-        'length': len(pkt['IP']),
-        'iat': float(str(pkt.iat)),
-      })
+      # time_series_data.append({
+      #   'direction': 1 if pkt['IP'].dst == self.ip_1 else 0, # 1 for incoming, 0 for outgoing
+      #   'length': len(pkt['IP']),
+      #   'iat': float(str(pkt.iat)),
+      # })
+      time_series_data.append((1 if pkt['IP'].dst == self.ip_1 else 0, len(pkt['IP']), float(str(pkt.iat))))
     return time_series_data
 
 
