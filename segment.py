@@ -452,6 +452,7 @@ def parse_args():
   parser = argparse.ArgumentParser()
   parser.add_argument("-f", "--filename", type=str, required=True, help="Path to the pcap file")
   parser.add_argument("-l", "--label", type=str, required=True, help="Label for the flow") 
+  parser.add_argument("-o", "--output", type=str, help="Path to the output file")
   return parser.parse_args()
 
 
@@ -463,39 +464,28 @@ if __name__ == "__main__":
 
   # filename = "captures/youtube/01.pcapng"
   # label = "youtube"
-  output_file = "data/zoom_01.json"
+  # output_file = "data/zoom_01.json"
 
   pkts = rdpcap(filename)  # read pcap file
 
   sorted_flows = classify_flows(pkts, label)
 
   largest_flow = sorted_flows[0]
-  iat = largest_flow.get_all_inter_arrival_times()
-  print(iat)
-  # print the largest 50 inter-arrival times
-  print("Largest 50 inter-arrival times:")
-  print(sorted(iat, reverse=True)[:50])
-  print(min(iat))
   # largest_flow.plot_iat_distribution()
 
-  largest_flow.plot(plot_first_n_seconds=10, plot_length=True, plot_arrival_time=True)
+  # largest_flow.plot(plot_first_n_seconds=10, plot_length=True, plot_arrival_time=True)
 
 
-  # print iat percentile
-  print("Inter-arrival time percentiles:")
-  for i in range(10, 100, 10):
-    print(f"{i}th percentile: {sorted(iat)[int(len(iat) * i / 100)]}")
-
-
-  largest_flow_separated = largest_flow.separate_flow_by_time_interval(60)
+  largest_flow_separated = largest_flow.separate_flow_by_time_interval(20)
   print(f"Largest flow: {largest_flow.flow_specifier} with {len(largest_flow.packets)} packets, {len(largest_flow_separated)} flows after separation")
   data = []
   for flow in largest_flow_separated:
     data.append(flow.get_per_flow_features())
 
-  with open(output_file, "w") as f:
-    import json
-    json.dump(data, f, indent=4)
+  if args.output:
+    with open(args.output, "w") as f:
+      import json
+      json.dump(data, f, indent=4)
 
   
   # print the top 5 flows by the number of packets
