@@ -357,7 +357,7 @@ class Flow:
     flow = Flow(self.flow_specifier)
 
     for pkt in self.packets:
-      # if the flow is empty, add the packet to the folw
+      # if the flow is empty, add the packet to the flow
       if not flow.packets:
         flow.append(pkt)
 
@@ -375,10 +375,50 @@ class Flow:
 
     separated_flows.append(flow)
     return separated_flows
+  
+  def separate_flow_by_packet_count(self, packet_count):
+    """
+    Separate the flow into multiple flows. Each flow contains packets that are sent within packet_count packets after the first packet. 
+    """
+    separated_flows = []
+    
+    flow = Flow(self.flow_specifier)
+
+    for pkt in self.packets:
+      # if the flow is empty, add the packet to the flow
+      if not flow.packets:
+        flow.append(pkt)
+
+      # check if the separated flow has less than packet_count packets
+      else:
+        if len(flow.packets) < packet_count:
+          flow.append(pkt)
+        else:
+          # add the flow to the list of separated flows
+          separated_flows.append(flow)
+          # create a new flow
+          flow = Flow(self.flow_specifier)
+          flow.append(pkt)
+
+    separated_flows.append(flow)
+    return separated_flows
+  
+  def get_time_series_data(self):
+    """
+    Return the time series data of the flow.
+    """
+    time_series_data = []
+    for pkt in self.packets:
+      time_series_data.append({
+        'direction': 1 if pkt['IP'].dst == self.ip_1 else 0, # 1 for incoming, 0 for outgoing
+        'length': len(pkt['IP']),
+        'iat': float(str(pkt.iat)),
+      })
+    return time_series_data
 
 
 
-def classify_flows(packets, label=None):
+def classify_flows(pkts, label=None):
   """
   classify flows based on the packets
   return a list of flows sorted by the number of packets in descending order
@@ -476,12 +516,19 @@ if __name__ == "__main__":
   # largest_flow.plot(plot_first_n_seconds=10, plot_length=True, plot_arrival_time=True)
 
 
-  largest_flow_separated = largest_flow.separate_flow_by_time_interval(20)
+  # largest_flow_separated = largest_flow.separate_flow_by_time_interval(20)
+  # print(f"Largest flow: {largest_flow.flow_specifier} with {len(largest_flow.packets)} packets, {len(largest_flow_separated)} flows after separation")
+  # data = []
+  # for flow in largest_flow_separated:
+  #   data.append(flow.get_per_flow_features())
+
+
+  largest_flow_separated = largest_flow.separate_flow_by_packet_count(300)
   print(f"Largest flow: {largest_flow.flow_specifier} with {len(largest_flow.packets)} packets, {len(largest_flow_separated)} flows after separation")
   data = []
   for flow in largest_flow_separated:
-    data.append(flow.get_per_flow_features())
-
+    data.append(flow.get_time_series_data())
+  
   if args.output:
     with open(args.output, "w") as f:
       import json
