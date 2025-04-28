@@ -138,7 +138,9 @@ class Flow:
     #   plt.plot(incoming_packets_time, incoming_packets_lengths)
     #   plt.plot(outgoing_packets_time, outgoing_packets_lengths, color='green')
 
-
+    # if plot_first_n_seconds is provides, then fix the x axis to the first n seconds
+    if plot_first_n_seconds:
+      plt.xlim(0, plot_first_n_seconds)
 
     if plot_arrival_time:
       # mark the arrival time of the packets with red dots
@@ -514,7 +516,7 @@ if __name__ == "__main__":
   largest_flow = sorted_flows[0]
   # largest_flow.plot_iat_distribution()
 
-  # largest_flow.plot(plot_first_n_seconds=10, plot_length=True, plot_arrival_time=True)
+  largest_flow.plot(plot_first_n_seconds=10, plot_length=True, plot_arrival_time=True)
 
 
   # largest_flow_separated = largest_flow.separate_flow_by_time_interval(20)
@@ -524,16 +526,16 @@ if __name__ == "__main__":
   #   data.append(flow.get_per_flow_features())
 
 
-  largest_flow_separated = largest_flow.separate_flow_by_packet_count(300)
-  print(f"Largest flow: {largest_flow.flow_specifier} with {len(largest_flow.packets)} packets, {len(largest_flow_separated)} flows after separation")
-  data = []
-  for flow in largest_flow_separated:
-    data.append(flow.get_time_series_data())
+  # largest_flow_separated = largest_flow.separate_flow_by_packet_count(300)
+  # print(f"Largest flow: {largest_flow.flow_specifier} with {len(largest_flow.packets)} packets, {len(largest_flow_separated)} flows after separation")
+  # data = []
+  # for flow in largest_flow_separated:
+  #   data.append(flow.get_time_series_data())
   
-  if args.output:
-    with open(args.output, "w") as f:
-      import json
-      json.dump(data, f, indent=4)
+  # if args.output:
+  #   with open(args.output, "w") as f:
+  #     import json
+  #     json.dump(data, f, indent=4)
 
   
   # print the top 5 flows by the number of packets
