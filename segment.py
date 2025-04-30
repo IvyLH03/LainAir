@@ -418,6 +418,46 @@ class Flow:
       # })
       time_series_data.append((1 if pkt['IP'].dst == self.ip_1 else 0, len(pkt['IP']), float(str(pkt.iat))))
     return time_series_data
+  
+  def get_ramdom_forest_features(self):
+    """
+    return the features of the flow for random forest
+    [
+      incoming_length_mean, incoming_length_median, incoming_length_std, 
+      outgoing_length_mean, outgoing_length_median, outgoing_length_std, 
+      iat_mean, iat_median, iat_std, iat_outlier_ratio
+    ]
+    """
+
+    incoming_packets = self.get_incoming_packets()
+    outgoing_packets = self.get_outgoing_packets()
+
+    incoming_length_sum = sum(len(p['IP']) for p in incoming_packets)  # incoming packet length sum
+    incoming_length_mean = incoming_length_sum / len(incoming_packets)  # incoming packet length mean
+    incoming_length_median = sorted(len(p['IP']) for p in incoming_packets)[len(incoming_packets) // 2]  # incoming packet length median
+    incoming_length_std = (sum((len(p['IP']) - incoming_length_mean) ** 2 for p in incoming_packets) / len(incoming_packets)) ** 0.5  # incoming packet length std
+
+    outgoing_length_sum = sum(len(p['IP']) for p in outgoing_packets)  # outgoing packet length sum
+    outgoing_length_mean = outgoing_length_sum / len(outgoing_packets)  # outgoing packet length mean
+    outgoing_length_median = sorted(len(p['IP']) for p in outgoing_packets)[len(outgoing_packets) // 2]  # outgoing packet length median
+    outgoing_length_std = (sum((len(p['IP']) - outgoing_length_mean) ** 2 for p in outgoing_packets) / len(outgoing_packets)) ** 0.5  # outgoing packet length std
+
+    iat_sum = sum(p.iat for p in self.packets)  # inter-arrival time sum
+    iat_mean = iat_sum / len(self.packets)  # inter-arrival time mean
+    iat_median = sorted(p.iat for p in self.packets)[len(self.packets) // 2]  # inter-arrival time median
+    iat_std = (sum((p.iat - iat_mean) ** 2 for p in self.packets) / len(self.packets)) ** 0.5  # inter-arrival time std
+
+    iat_outlier_threshold = 0.1 # packets that has iat > 0.1s are considered outliers (off times)
+    iat_outlier_count = sum(1 for p in self.packets if p.iat > iat_outlier_threshold)  # inter-arrival time outlier count
+    iat_outlier_ratio = iat_outlier_count / len(self.packets)  # inter-arrival time outlier ratio
+
+    return [
+      incoming_length_mean, incoming_length_median, incoming_length_std,
+      outgoing_length_mean, outgoing_length_median, outgoing_length_std,
+      iat_mean, iat_median, iat_std, iat_outlier_ratio
+    ]
+
+
 
 
 
@@ -516,14 +556,14 @@ if __name__ == "__main__":
   largest_flow = sorted_flows[0]
   # largest_flow.plot_iat_distribution()
 
-  largest_flow.plot(plot_first_n_seconds=10, plot_length=True, plot_arrival_time=True)
+  # largest_flow.plot(plot_first_n_seconds=10, plot_length=True, plot_arrival_time=True)
 
 
-  # largest_flow_separated = largest_flow.separate_flow_by_time_interval(20)
-  # print(f"Largest flow: {largest_flow.flow_specifier} with {len(largest_flow.packets)} packets, {len(largest_flow_separated)} flows after separation")
-  # data = []
-  # for flow in largest_flow_separated:
-  #   data.append(flow.get_per_flow_features())
+  largest_flow_separated = largest_flow.separate_flow_by_time_interval(120)
+  print(f"Largest flow: {largest_flow.flow_specifier} with {len(largest_flow.packets)} packets, {len(largest_flow_separated)} flows after separation")
+  data = []
+  for flow in largest_flow_separated:
+    data.append(flow.get_ramdom_forest_features())
 
 
   # largest_flow_separated = largest_flow.separate_flow_by_packet_count(300)
