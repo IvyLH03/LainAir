@@ -73,7 +73,39 @@ def lstm_data():
     json.dump(data, f)
   
   
+def random_forest_data():
+  youtube_data = []
+  zoom_data = []
+  twitch_data = []
 
+  youtube_data_files = ['data/1min/youtube_01.json', 'data/1min/youtube_02.json', 'data/1min/youtube_03.json']
+  zoom_data_files = ['data/1min/zoom_01.json', 'data/1min/zoom_02.json']
+  twitch_data_files = ['data/1min/twitch_01.json', 'data/1min/twitch_02.json']
+
+  # load data from json files
+  for file in youtube_data_files:
+    with open(file, 'r') as f:
+      f_data = json.load(f)
+      for d in f_data:
+        youtube_data.append(d)
+
+  for file in zoom_data_files:
+    with open(file, 'r') as f:
+      f_data = json.load(f)
+      for d in f_data:
+        zoom_data.append(d)
+
+  for file in twitch_data_files:
+    with open(file, 'r') as f:
+      f_data = json.load(f)
+      for d in f_data:
+        twitch_data.append(d)
+
+  print(len(youtube_data), len(zoom_data), len(twitch_data))
+
+
+  
 
 if __name__ == "__main__":
-    lstm_data()
+    # lstm_data()
+    random_forest_data()
