@@ -425,7 +425,8 @@ class Flow:
     [
       incoming_length_mean, incoming_length_median, incoming_length_std, 
       outgoing_length_mean, outgoing_length_median, outgoing_length_std, 
-      iat_mean, iat_median, iat_std, iat_outlier_ratio
+      iat_mean, iat_median, iat_std, iat_outlier_ratio,
+      in_count, out_count
     ]
     """
 
@@ -442,19 +443,20 @@ class Flow:
     outgoing_length_median = sorted(len(p['IP']) for p in outgoing_packets)[len(outgoing_packets) // 2]  # outgoing packet length median
     outgoing_length_std = (sum((len(p['IP']) - outgoing_length_mean) ** 2 for p in outgoing_packets) / len(outgoing_packets)) ** 0.5  # outgoing packet length std
 
-    iat_sum = sum(p.iat for p in self.packets)  # inter-arrival time sum
+    iat_sum = sum(float(p.iat) for p in self.packets)  # inter-arrival time sum
     iat_mean = iat_sum / len(self.packets)  # inter-arrival time mean
-    iat_median = sorted(p.iat for p in self.packets)[len(self.packets) // 2]  # inter-arrival time median
-    iat_std = (sum((p.iat - iat_mean) ** 2 for p in self.packets) / len(self.packets)) ** 0.5  # inter-arrival time std
+    iat_median = sorted(float(p.iat) for p in self.packets)[len(self.packets) // 2]  # inter-arrival time median
+    iat_std = (sum((float(p.iat) - iat_mean) ** 2 for p in self.packets) / len(self.packets)) ** 0.5  # inter-arrival time std
 
     iat_outlier_threshold = 0.1 # packets that has iat > 0.1s are considered outliers (off times)
-    iat_outlier_count = sum(1 for p in self.packets if p.iat > iat_outlier_threshold)  # inter-arrival time outlier count
+    iat_outlier_count = sum(1 for p in self.packets if float(p.iat) > iat_outlier_threshold)  # inter-arrival time outlier count
     iat_outlier_ratio = iat_outlier_count / len(self.packets)  # inter-arrival time outlier ratio
 
     return [
       incoming_length_mean, incoming_length_median, incoming_length_std,
       outgoing_length_mean, outgoing_length_median, outgoing_length_std,
-      iat_mean, iat_median, iat_std, iat_outlier_ratio
+      iat_mean, iat_median, iat_std, iat_outlier_ratio,
+      len(incoming_packets), len(outgoing_packets)
     ]
 
 
@@ -564,6 +566,13 @@ if __name__ == "__main__":
   data = []
   for flow in largest_flow_separated:
     data.append(flow.get_ramdom_forest_features())
+
+  print(data[:5])
+
+  if args.output:
+    with open(args.output, "w") as f:
+      import json
+      json.dump(data, f, indent=4)
 
 
   # largest_flow_separated = largest_flow.separate_flow_by_packet_count(300)
