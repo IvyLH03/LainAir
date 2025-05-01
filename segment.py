@@ -425,7 +425,7 @@ class Flow:
     [
       incoming_length_mean, incoming_length_median, incoming_length_std, 
       outgoing_length_mean, outgoing_length_median, outgoing_length_std, 
-      iat_mean, iat_median, iat_std, iat_outlier_ratio,
+      iat_mean, iat_median, iat_std, iat_tail_mean,
       in_count, out_count
     ]
     """
@@ -451,11 +451,14 @@ class Flow:
     iat_outlier_threshold = 0.1 # packets that has iat > 0.1s are considered outliers (off times)
     iat_outlier_count = sum(1 for p in self.packets if float(p.iat) > iat_outlier_threshold)  # inter-arrival time outlier count
     iat_outlier_ratio = iat_outlier_count / len(self.packets)  # inter-arrival time outlier ratio
+    
+    # define tail mean = the mean of the largest 20 packets
+    iat_tail_mean = sum(sorted(float(p.iat) for p in self.packets)[-20:]) / 20 if len(self.packets) >= 20 else iat_mean
 
     return [
       incoming_length_mean, incoming_length_median, incoming_length_std,
       outgoing_length_mean, outgoing_length_median, outgoing_length_std,
-      iat_mean, iat_median, iat_std, iat_outlier_ratio,
+      iat_mean, iat_median, iat_std, iat_tail_mean,
       len(incoming_packets), len(outgoing_packets)
     ]
 
