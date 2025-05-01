@@ -452,8 +452,8 @@ class Flow:
     iat_outlier_count = sum(1 for p in self.packets if float(p.iat) > iat_outlier_threshold)  # inter-arrival time outlier count
     iat_outlier_ratio = iat_outlier_count / len(self.packets)  # inter-arrival time outlier ratio
     
-    # define tail mean = the mean of the largest 20 packets
-    iat_tail_mean = sum(sorted(float(p.iat) for p in self.packets)[-20:]) / 20 if len(self.packets) >= 20 else iat_mean
+    # define tail mean = the mean of the largest 10 packets
+    iat_tail_mean = sum(sorted(float(p.iat) for p in self.packets)[-10:]) / 10 if len(self.packets) >= 10 else iat_mean
 
     return [
       incoming_length_mean, incoming_length_median, incoming_length_std,
@@ -564,7 +564,7 @@ if __name__ == "__main__":
   # largest_flow.plot(plot_first_n_seconds=10, plot_length=True, plot_arrival_time=True)
 
 
-  largest_flow_separated = largest_flow.separate_flow_by_time_interval(120)
+  largest_flow_separated = largest_flow.separate_flow_by_time_interval(20)
   print(f"Largest flow: {largest_flow.flow_specifier} with {len(largest_flow.packets)} packets, {len(largest_flow_separated)} flows after separation")
   data = []
   for flow in largest_flow_separated:
